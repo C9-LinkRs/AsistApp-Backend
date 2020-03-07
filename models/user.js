@@ -1,7 +1,7 @@
 let mongoose = require("mongoose");
 let validator = require("validator");
 
-let studentSchema = new mongoose.Schema({
+let userSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
@@ -22,7 +22,14 @@ let studentSchema = new mongoose.Schema({
     validate: (value) => {
       return validator.isEmail(value);
     }
+  },
+  isTeacher: {
+    type: Boolean,
+    required: true,
+    validate: (value) => {
+      return validator.isBoolean(value);
+    }
   }
 });
 
-module.exports = mongoose.model('Student', studentSchema);
+module.exports = mongoose.model('User', userSchema);

@@ -1,7 +1,7 @@
 let express = require("express");
 
 let teacherModel = require("../models/teacher");
-let studentModel = require("../models/student");
+let userModel = require("../models/user");
 
 let router = express.Router();
 

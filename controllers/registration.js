@@ -1,7 +1,7 @@
 let express = require("express");
 
-let teacher_model = require("../models/teacher");
-let student_model = require("../models/student");
+let teacherModel = require("../models/teacher");
+let studentModel = require("../models/student");
 
 let router = express.Router();
 

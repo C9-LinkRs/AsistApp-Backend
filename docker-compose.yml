@@ -27,10 +27,16 @@ services:
       - MONGODB_PASSWORD=${MONGODB_PASSWORD}
     volumes: 
       - ./config/init_database.sh:/docker-entrypoint-initdb.d/init_database.sh
+      - mongodb:/data/db
+      - mongodb_config:/data/configdb
     ports:
       - ${MONGODB_PORT}:${MONGODB_PORT}
     networks:
       - asistencias_un_network
+
+volumes:
+  mongodb:
+  mongodb_config:
 
 networks:
   asistencias_un_network:

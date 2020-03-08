@@ -1,7 +1,11 @@
 let mongoose = require("mongoose");
 
-const server = "127.0.0.1:27017";
-const database = "asistencias_un";
+const {
+  MONGODB_USERNAME,
+  MONGODB_PASSWORD,
+  MONGODB_SERVER,
+  MONGODB_DATABASE
+} = process.env;
 
 class Database {
   constructor() {
@@ -9,7 +13,7 @@ class Database {
   }
 
   connect() {
-    mongoose.connect(`mongodb://${server}/${database}`).then(() => {
+    mongoose.connect(`mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_SERVER}/${MONGODB_DATABASE}`).then(() => {
       console.log("MongoDB connection successful");
     }).catch(error => {
       console.log("MongoDB connection error", error);

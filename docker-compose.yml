@@ -1,14 +1,43 @@
 version: '3.7'
+
 services:
+  api_container:
+    container_name: asistencias_un_api
+    build: ./
+    restart: unless-stopped
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    env_file: .env
+    environment: 
+      - MONGODB_USERNAME=$MONGODB_USERNAME
+      - MONGODB_PASSWORD=$MONGODB_PASSWORD
+      - MONGODB_SERVER=$MONGODB_SERVER
+      - MONGODB_DATABASE=$MONGODB_DATABASE
+    depends_on: 
+      - mongodb_container
+    ports:
+      - 3000:3000
+    networks:
+      - asistencias_un_network
   mongodb_container:
     image: mongo:latest
+    container_name: asistencias_un_db
+    restart: unless-stopped
+    env_file: .env
     environment: 
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: root
+      - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USERNAME
+      - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
     ports:
       - 27017:27017
     volumes:
-      - mongodb_data_container:/data/db
+      - mongodb_data:/data/db
+    networks:
+      - asistencias_un_network
+
+networks:
+  asistencias_un_network:
+    driver: bridge
 
 volumes:
-  mongodb_data_container:
+  mongodb_data:

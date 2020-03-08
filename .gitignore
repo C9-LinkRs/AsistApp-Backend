@@ -3,6 +3,3 @@ node_modules/
 
 #Environment variables
 .env
-
-#Docker ignore
-.dockerignore

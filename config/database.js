@@ -4,21 +4,20 @@ const {
   MONGODB_USERNAME,
   MONGODB_PASSWORD,
   MONGODB_SERVER,
-  MONGODB_DATABASE
+  MONGODB_DATABASE,
+  MONGODB_PORT
 } = process.env;
+const OPTIONS = {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  connectTimeoutMS: 10000
+};
+const URL = `mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_SERVER}/${MONGODB_DATABASE}?authSource=admin`;
 
-class Database {
-  constructor() {
-    this.connect();
-  }
+mongoose.connect(URL, OPTIONS).then(() => {
+  console.log("MongoDB connection successful");
+}).catch(error => {
+  console.log("MongoDB connection error", error);
+});
 
-  connect() {
-    mongoose.connect(`mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_SERVER}/${MONGODB_DATABASE}`).then(() => {
-      console.log("MongoDB connection successful");
-    }).catch(error => {
-      console.log("MongoDB connection error", error);
-    });
-  }
-}
-
-module.exports = new Database();
+module.exports = mongoose;

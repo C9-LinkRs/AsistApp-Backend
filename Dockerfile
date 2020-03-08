@@ -8,6 +8,6 @@ RUN npm install --global nodemon
 COPY package*.json ./
 RUN npm install --quiet --no-optional
 
-EXPOSE 3000
+EXPOSE ${NODEJS_PORT}
 
 CMD nodemon app.js

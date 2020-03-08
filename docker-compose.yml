@@ -9,35 +9,29 @@ services:
       - ./:/app
       - /app/node_modules
     env_file: .env
-    environment: 
-      - MONGODB_USERNAME=$MONGODB_USERNAME
-      - MONGODB_PASSWORD=$MONGODB_PASSWORD
-      - MONGODB_SERVER=$MONGODB_SERVER
-      - MONGODB_DATABASE=$MONGODB_DATABASE
     depends_on: 
       - mongodb_container
     ports:
-      - 3000:3000
+      - ${NODEJS_PORT}:${NODEJS_PORT}
     networks:
       - asistencias_un_network
   mongodb_container:
     image: mongo:latest
     container_name: asistencias_un_db
     restart: unless-stopped
-    env_file: .env
-    environment: 
-      - MONGO_INITDB_ROOT_USERNAME=$MONGODB_USERNAME
-      - MONGO_INITDB_ROOT_PASSWORD=$MONGODB_PASSWORD
+    environment:
+      - MONGO_INITDB_DATABASE=${MONGODB_DATABASE}
+      - MONGO_INITDB_ROOT_USERNAME=${MONGODB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD}
+      - MONGODB_USERNAME=${MONGODB_USERNAME}
+      - MONGODB_PASSWORD=${MONGODB_PASSWORD}
+    volumes: 
+      - ./config/init_database.sh:/docker-entrypoint-initdb.d/init_database.sh
     ports:
-      - 27017:27017
-    volumes:
-      - mongodb_data:/data/db
+      - ${MONGODB_PORT}:${MONGODB_PORT}
     networks:
       - asistencias_un_network
 
 networks:
   asistencias_un_network:
     driver: bridge
-
-volumes:
-  mongodb_data:

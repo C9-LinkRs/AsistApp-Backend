@@ -5,7 +5,8 @@ let userModel = require("../models/user");
 let router = express.Router();
 
 router.post("/", (request, response) => {
-  response.send({
+  response.json({
+    statusCode: 200,
     request
   });
 });

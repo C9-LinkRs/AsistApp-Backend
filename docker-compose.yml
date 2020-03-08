@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./:/app
-      - /app/node_modules
+      - node_modules:/app/node_modules
     env_file: .env
     depends_on: 
       - mongodb_container
@@ -37,6 +37,7 @@ services:
 volumes:
   mongodb:
   mongodb_config:
+  node_modules:
 
 networks:
   asistencias_un_network:

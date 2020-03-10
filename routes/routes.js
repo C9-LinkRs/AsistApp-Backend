@@ -1,10 +1,12 @@
 let express = require("express");
 
-const signup = require("../controllers/signup");
+const userController = require("../controllers/userController");
+const courseController = require("../controllers/courseController");
 
 let router = express.Router();
 
-router.use("/signup", signup);
+router.use("/users", userController);
+router.use("/courses", courseController);
 
 router.get("/", (request, response) => {
   response.send({

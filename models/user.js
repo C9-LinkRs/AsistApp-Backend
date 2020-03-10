@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
     }
   },
   isTeacher: {
-    type: Boolean,
+    type: String,
     required: true,
     validate: (value) => {
       return validator.isBoolean(value);

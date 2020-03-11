@@ -1,4 +1,5 @@
 let express = require("express");
+const qrCode = require("qrcode");
 
 const userModel = require("../models/user");
 
@@ -10,15 +11,18 @@ router.get("/", (request, response) => {
   });
 });
 
-router.post("/create", (request, response) => {
+router.post("/create", async (request, response) => {
   let userRequest = request.body;
   console.log("new user data", userRequest);
-  if (validRequest(userRequest) && !userExists(userRequest)) {
+  if (validRequest(userRequest) && !await userExists(userRequest)) {
+    let userData = userRequest.username + ';' + userRequest.password + ';' + userRequest.email;
+    let userQrCode = await generateQRCode(userData);
     let newUser = new userModel({
       username: userRequest.username,
       password: userRequest.password,
       email: userRequest.email,
-      isTeacher: userRequest.isTeacher.toString()
+      isTeacher: userRequest.isTeacher.toString(),
+      qrCode: userQrCode.toString()
     });
     newUser.save((error, userModel) => {
       if (error) {
@@ -47,20 +51,28 @@ router.post("/create", (request, response) => {
   }
 });
 
+router.delete("/delete", (request, response) => {
+  
+});
+
+async function generateQRCode(data) {
+  try {
+    return await qrCode.toDataURL(data);
+  } catch (error) {
+    console.log("error generating qr code", error);
+    return false;
+  }
+}
+
 function validRequest(body) {
   return body && body.username && body.password && body.email;
 }
 
-function userExists(body) {
-  return userModel.find({
+async function userExists(body) {
+  return await userModel.exists({
     username: body.username,
     password: body.password,
     email: body.email
-  }, (error, response) => {
-    if (error) {
-      console.log("error checking user existance", error);
-      return true;
-    } else return response.length;
   });
 }
 

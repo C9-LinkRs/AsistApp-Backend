@@ -56,7 +56,7 @@ function courseExists(body) {
     if (error) {
       console.log("error checking course existance", error);
       return true;
-    } else return response.length;
+    } else return response.length > 0;
   });
 }
 

@@ -29,6 +29,13 @@ const userSchema = new mongoose.Schema({
     validate: (value) => {
       return validator.isBoolean(value);
     }
+  },
+  qrCode: {
+    type: String,
+    required: true,
+    validate: (value) => {
+      return validator.isDataURI(value);
+    }
   }
 });
 

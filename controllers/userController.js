@@ -14,45 +14,43 @@ router.get("/", (request, response) => {
 router.post("/create", async (request, response) => {
   let userRequest = request.body;
   console.log("new user data", userRequest);
-  if (validRequest(userRequest) && !await userExists(userRequest)) {
-    let userData = userRequest.username + ';' + userRequest.password + ';' + userRequest.email;
-    let userQrCode = await generateQRCode(userData);
-    let newUser = new userModel({
-      username: userRequest.username,
-      password: userRequest.password,
-      email: userRequest.email,
-      isTeacher: userRequest.isTeacher.toString(),
-      qrCode: userQrCode.toString()
-    });
-    newUser.save((error, userModel) => {
-      if (error) {
-        console.log("error saving new user in db", error);
-        response.json({
-          statusCode: 500,
-          message: error
-        });
-      } else {
-        response.json({
-          statusCode: 200,
-          message: "user added successful"
-        });
-      }
-    });
-  } else if (userExists(userRequest)) {
+  try {
+    if (validRequest(userRequest) && !await userExists(userRequest)) {
+      let userData = userRequest.username + ';' + userRequest.password + ';' + userRequest.email;
+      let userQrCode = await generateQRCode(userData);
+      let newUser = new userModel({
+        username: userRequest.username,
+        password: userRequest.password,
+        email: userRequest.email,
+        isTeacher: userRequest.isTeacher.toString(),
+        qrCode: userQrCode.toString()
+      });
+      await newUser.save();
+      response.json({
+        statusCode: 200,
+        message: "user added successful"
+      });
+    } else if (await userExists(userRequest)) {
+      response.json({
+        statusCode: 200,
+        message: "user already exists"
+      });
+    } else {
+      response.json({
+        statusCode: 400,
+        message: "bad request"
+      });
+    }
+  } catch (error) {
     response.json({
-      statusCode: 200,
-      message: "user already exists"
-    });
-  } else {
-    response.json({
-      statusCode: 400,
-      message: "bad request"
+      statusCode: 500,
+      message: error
     });
   }
 });
 
 router.delete("/delete", (request, response) => {
-  
+
 });
 
 async function generateQRCode(data) {

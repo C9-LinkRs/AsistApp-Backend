@@ -1,5 +1,6 @@
 let express = require("express");
-const qrCode = require("qrcode");
+let qrCode = require("qrcode");
+let jsonWebToken = require("jsonwebtoken");
 
 const userModel = require("../models/user");
 
@@ -15,7 +16,7 @@ router.post("/create", async (request, response) => {
   let userRequest = request.body;
   console.log("new user data", userRequest);
   try {
-    if (validRequest(userRequest) && !await userExists(userRequest)) {
+    if (validRequest(userRequest, true) && !await userExists(userRequest)) {
       let userData = userRequest.username + ';' + userRequest.password + ';' + userRequest.email;
       let userQrCode = await generateQRCode(userData);
       let newUser = new userModel({
@@ -53,6 +54,35 @@ router.delete("/delete", (request, response) => {
 
 });
 
+router.post("/login", async (request, response) => {
+  let userRequest = request.body;
+  try {
+    if (validRequest(userRequest, false)) {
+      let userData = await getUserInformation(userRequest);
+      if (userData && userData.length) {
+        let accessToken = jsonWebToken.sign({
+          userId: userData[0]._id
+        });
+        response.json({
+          statusCode: 200,
+          message: 'user logged in'
+        });
+      } else {
+        response.json({
+          statusCode: 400,
+          message: 'user not found'
+        });
+      }
+    }
+  } catch (error) {
+    console.log("error login user", error);
+    response.json({
+      statusCode: 500,
+      message: error
+    });
+  }
+});
+
 async function generateQRCode(data) {
   try {
     return await qrCode.toDataURL(data);
@@ -62,8 +92,8 @@ async function generateQRCode(data) {
   }
 }
 
-function validRequest(body) {
-  return body && body.username && body.password && body.email;
+function validRequest(body, isCreating) {
+  return body && body.username && body.password && ((isCreating) ? body.email : true);
 }
 
 async function userExists(body) {
@@ -71,6 +101,13 @@ async function userExists(body) {
     username: body.username,
     password: body.password,
     email: body.email
+  });
+}
+
+async function getUserInformation(body) {
+  return await userModel.find({
+    username: body.username,
+    password: body.password
   });
 }
 

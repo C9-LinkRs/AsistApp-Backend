@@ -3,13 +3,25 @@ let qrCode = require("qrcode");
 let jsonWebToken = require("jsonwebtoken");
 
 const userModel = require("../models/user");
+const cacheTokenModel = require("../models/cacheToken");
 
 let router = express.Router();
 
-router.get("/", (request, response) => {
-  userModel.find((error, dbResponse) => {
-    response.json(dbResponse);
-  });
+router.get("/", async (request, response) => {
+  try {
+    const dbResponse = await userModel.find();
+
+    response.json({
+      statusCode: 200,
+      dbResponse
+    });
+  } catch (error) {
+    response.json({
+      statusCode: 500,
+      message: "error fetching data"
+    });
+  }
+
 });
 
 router.post("/create", async (request, response) => {
@@ -51,7 +63,22 @@ router.post("/create", async (request, response) => {
 });
 
 router.delete("/delete", (request, response) => {
-
+  let accessToken = request.headers.authorization;
+  try {
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
+    await userModel.destroy({ _id: decodedToken.userId });
+    await cacheTokenModel.destroy({ userId });
+    response.json({
+      statusCode: 200,
+      message: "user deleted"
+    });
+  } catch (error) {
+    console.log(error);
+    response.json({
+      statusCode: 500,
+      message: "error deleting user"
+    });
+  }
 });
 
 router.post("/login", async (request, response) => {
@@ -60,12 +87,17 @@ router.post("/login", async (request, response) => {
     if (validRequest(userRequest, false)) {
       let userData = await getUserInformation(userRequest);
       if (userData && userData.length) {
-        let accessToken = jsonWebToken.sign({
-          userId: userData[0]._id
+        let accessToken = jsonWebToken.sign({ userId: userData[0]._id }, process.env.SECRET_KEY, { expiresIn: process.env.TOKEN_LIFE });
+        let refreshAccessRoken = jsonWebToken.sign({ userId: userData[0]._id }, process.env.SECRET_KEY, { expiresIn: process.env.REFRESH_TOKEN_LIFE });
+        let newRefreshToken = new cacheTokenModel({
+          userId: userData[0]._id.toString(),
+          refreshToken: refreshAccessRoken.toString()
         });
+        await newRefreshToken.save();
         response.json({
           statusCode: 200,
-          message: 'user logged in'
+          message: 'user logged in',
+          accessToken
         });
       } else {
         response.json({
@@ -78,7 +110,25 @@ router.post("/login", async (request, response) => {
     console.log("error login user", error);
     response.json({
       statusCode: 500,
-      message: error
+      message: "error login user"
+    });
+  }
+});
+
+router.get("/logout", async (request, response) => {
+  let accessToken = request.headers.authorization;
+  try {
+    let decodedToken = jsonWebToken.verify(accessToken, proccess.env.SECRET_KEY, { ignoreExpiration: true });
+    await cacheTokenModel.destroy({ userId: decodedToken.userId });
+    response.json({
+      statusCode: 200,
+      message: "logged out"
+    });
+  } catch (error) {
+    console.log(error);
+    response.json({
+      statusCode: 500,
+      message: "error logging out"
     });
   }
 });

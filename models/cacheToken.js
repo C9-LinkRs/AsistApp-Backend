@@ -1,7 +1,7 @@
 let mongoose = require("mongoose");
 
 const cacheTokenSchema = new mongoose.Schema({
-  userId: {
+  username: {
     type: String,
     required: true
   },

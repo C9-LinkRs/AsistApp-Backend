@@ -2,8 +2,6 @@ let express = require("express");
 let jsonWebToken = require("jsonwebtoken");
 
 const cacheTokenModel = require("../models/cacheToken");
-const userModel = require("../models/user");
-
 let router = express.Router();
 
 
@@ -24,52 +22,47 @@ router.get("/", async (request, response) => {
   }
 });
 
-router.get("/refresh", async (request, response) => {
-  let accessToken = request.headers.authorization;
+router.post("/refresh", async (request, response) => {
+  let userRequest = request.body;
   try {
-    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY, { ignoreExpiration: true });
-    let userId = decodedToken.userId;
-    if (await userExists(userId) && await refreshExists(userId)) {
-      let dbResponse = await getRefreshToken(userId);
-      let refreshToken = dbResponse.refreshToken;
+    if (await refreshExists(userRequest)) {
+      let userId = await getUserId(userRequest);
 
-      jsonWebToken.verify(refreshToken, process.env.SECRET_KEY); // Check if refresh token is alive
-      
-      let newToken = jsonWebToken.sign(userId, process.env.SECRET_KEY);
+      jsonWebToken.verify(userRequest.refreshToken, process.env.SECRET_KEY); // Check if refresh token is alive
+
+      let newAccessToken = jsonWebToken.sign(userId, process.env.SECRET_KEY, { expiresIn: process.env.SECRET_KEY});
       response.json({
         statusCode: 200,
-        accessToken: newToken
-      });
-    } else if(await userExists(userId)) {
-      response.json({
-        statusCode: 403,
-        message: "expired refresh token"
+        accessToken: newAccessToken
       });
     } else {
       response.json({
-        statusCode: 400,
-        message: "bad request"
+        statusCode: 403,
+        message: "refresh token not found"
       });
     }
   } catch (error) {
     console.log(error);
+    let message = error.message || "error refreshing token";
     response.json({
       statusCode: 500,
-      message: error.message
+      message
     });
   }
 });
 
-async function userExists(userId) {
-  return await userModel.exists({ _id: userId });
+async function refreshExists(body) {
+  return await cacheTokenModel.exists({
+    username: body.username,
+    refreshToken: body.refreshToken
+  });
 }
 
-async function refreshExists(userId) {
-  return await cacheTokenModel.exists({ userId });
-}
-
-async function getRefreshToken(userId) {
-  return await cacheTokenModel.find({ userId });
+async function getUserId(body) {
+  return (await userModel.find({
+    username: body.username,
+    password: body.password
+  }))._id;
 }
 
 module.exports = router;

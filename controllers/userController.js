@@ -26,7 +26,6 @@ router.get("/", async (request, response) => {
 
 router.post("/create", async (request, response) => {
   let userRequest = request.body;
-  console.log("new user data", userRequest);
   try {
     if (validRequest(userRequest, true) && !await userExists(userRequest)) {
       let userData = userRequest.username + ';' + userRequest.password + ';' + userRequest.email;
@@ -55,17 +54,19 @@ router.post("/create", async (request, response) => {
       });
     }
   } catch (error) {
+    console.log(error);
     response.json({
       statusCode: 500,
-      message: error
+      message: "error creating user"
     });
   }
 });
 
-router.delete("/delete", (request, response) => {
+router.delete("/delete", async (request, response) => {
   let accessToken = request.headers.authorization;
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
+    
     await userModel.destroy({ _id: decodedToken.userId });
     await cacheTokenModel.destroy({ userId });
     response.json({
@@ -74,9 +75,10 @@ router.delete("/delete", (request, response) => {
     });
   } catch (error) {
     console.log(error);
+    let message = error.message || "error deleting user";
     response.json({
       statusCode: 500,
-      message: "error deleting user"
+      message
     });
   }
 });
@@ -85,32 +87,41 @@ router.post("/login", async (request, response) => {
   let userRequest = request.body;
   try {
     if (validRequest(userRequest, false)) {
-      let userData = await getUserInformation(userRequest);
-      if (userData && userData.length) {
-        let accessToken = jsonWebToken.sign({ userId: userData[0]._id }, process.env.SECRET_KEY, { expiresIn: process.env.TOKEN_LIFE });
-        let refreshAccessRoken = jsonWebToken.sign({ userId: userData[0]._id }, process.env.SECRET_KEY, { expiresIn: process.env.REFRESH_TOKEN_LIFE });
-        let newRefreshToken = new cacheTokenModel({
-          userId: userData[0]._id.toString(),
-          refreshToken: refreshAccessRoken.toString()
-        });
-        await newRefreshToken.save();
+      if (await userExists(userRequest)) {
+        let accessToken = jsonWebToken.sign({ username: userRequest.username }, process.env.SECRET_KEY, { expiresIn: process.env.TOKEN_LIFE });
+        let refreshToken = await getRefreshToken(userRequest);
+        
+        if (!refreshToken) {
+          refreshToken = jsonWebToken.sign({ username: userRequest.username }, process.env.SECRET_KEY, { expiresIn: process.env.REFRESH_TOKEN_LIFE });
+          let newRefreshToken = new cacheTokenModel({
+            username: userRequest.username,
+            refreshToken: refreshAccessToken.toString()
+          });
+          await newRefreshToken.save();
+        }
         response.json({
           statusCode: 200,
-          message: 'user logged in',
-          accessToken
+          accessToken,
+          refreshToken
         });
       } else {
         response.json({
-          statusCode: 400,
-          message: 'user not found'
+          statusCode: 401,
+          message: "user not found"
         });
       }
+    } else {
+      response.json({
+        statusCode: 400,
+        message: "bad request"
+      });
     }
   } catch (error) {
-    console.log("error login user", error);
+    console.log(error);
+    let message = error.message || "error loging user";
     response.json({
       statusCode: 500,
-      message: "error login user"
+      message
     });
   }
 });
@@ -119,16 +130,18 @@ router.get("/logout", async (request, response) => {
   let accessToken = request.headers.authorization;
   try {
     let decodedToken = jsonWebToken.verify(accessToken, proccess.env.SECRET_KEY, { ignoreExpiration: true });
-    await cacheTokenModel.destroy({ userId: decodedToken.userId });
+    
+    await cacheTokenModel.destroy({ username: decodedToken.username });
     response.json({
       statusCode: 200,
       message: "logged out"
     });
   } catch (error) {
     console.log(error);
+    let message = error.message || "error logging out";
     response.json({
       statusCode: 500,
-      message: "error logging out"
+      message
     });
   }
 });
@@ -154,11 +167,14 @@ async function userExists(body) {
   });
 }
 
-async function getUserInformation(body) {
-  return await userModel.find({
-    username: body.username,
-    password: body.password
-  });
+async function getRefreshToken(body) {
+  try {
+    let dbResponse = await cacheTokenModel.find({ username: body.username });
+    return dbResponse.refreshToken;
+  } catch (error) {
+    console.log(error);
+    return undefined;
+  }
 }
 
 module.exports = router;

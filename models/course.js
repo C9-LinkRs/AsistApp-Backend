@@ -5,9 +5,17 @@ const courseSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  teacherId: {
+  teacherUsername: {
     type: String,
     required: true
+  },
+  students: {
+    type: Array,
+    required: false
+  },
+  schedule: {
+    type: Array,
+    required: false
   }
 });
 

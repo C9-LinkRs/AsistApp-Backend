@@ -67,8 +67,8 @@ router.delete("/delete", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
     
-    await userModel.destroy({ _id: decodedToken.userId });
-    await cacheTokenModel.destroy({ userId });
+    await userModel.destroy({ username: decodedToken.username });
+    await cacheTokenModel.destroy({ username: decodedToken.username });
     response.json({
       statusCode: 200,
       message: "user deleted"
@@ -76,8 +76,9 @@ router.delete("/delete", async (request, response) => {
   } catch (error) {
     console.log(error);
     let message = error.message || "error deleting user";
+    let statusCode = (error.message === "jwt expired") ? 401 : 500;
     response.json({
-      statusCode: 500,
+      statusCode,
       message
     });
   }
@@ -94,8 +95,8 @@ router.post("/login", async (request, response) => {
         if (!refreshToken) {
           refreshToken = jsonWebToken.sign({ username: userRequest.username }, process.env.SECRET_KEY, { expiresIn: process.env.REFRESH_TOKEN_LIFE });
           let newRefreshToken = new cacheTokenModel({
-            username: userRequest.username,
-            refreshToken: refreshAccessToken.toString()
+            username: userRequest.username.toString(),
+            refreshToken: refreshToken.toString()
           });
           await newRefreshToken.save();
         }
@@ -106,7 +107,7 @@ router.post("/login", async (request, response) => {
         });
       } else {
         response.json({
-          statusCode: 401,
+          statusCode: 404,
           message: "user not found"
         });
       }
@@ -119,8 +120,9 @@ router.post("/login", async (request, response) => {
   } catch (error) {
     console.log(error);
     let message = error.message || "error loging user";
+    let statusCode = (error.message === "jwt expired") ? 401 : 500;
     response.json({
-      statusCode: 500,
+      statusCode,
       message
     });
   }
@@ -139,8 +141,9 @@ router.get("/logout", async (request, response) => {
   } catch (error) {
     console.log(error);
     let message = error.message || "error logging out";
+    let statusCode = (error.message === "jwt expired") ? 401 : 500;
     response.json({
-      statusCode: 500,
+      statusCode,
       message
     });
   }

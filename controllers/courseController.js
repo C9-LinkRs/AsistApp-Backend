@@ -6,7 +6,7 @@ const userModel = require("../models/user");
 
 let router = express.Router();
 
-router.get("/", (request, response) => {
+router.get("/", async (request, response) => {
   try {
     let dbResponse = await courseModel.find();
 
@@ -97,9 +97,9 @@ router.post("/addStudent", async (request, response) => {
   let accessToken = request.headers.authorization;
   let courseRequest = request.body;
   try {
-    let decodedToken = json.verify(accessToken, process.env.SECRET_KEY);
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (await studentExists(courseRequest.studentUsername) && await courseExists(courseRequest.name, decodedToken.username)) {
+    if (await studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
       let response = await addStudentToCourse(courseRequest, decodedToken.username);
       response.json({
         statusCode: 200,
@@ -128,7 +128,7 @@ router.delete("/deleteStudent", async (request, response) => {
   try {
     let decodedToken = json.verify(accessToken, process.env.SECRET_KEY);
 
-    if (await studentExists(courseRequest.studentUsername) && await courseExists(courseRequest.name, decodedToken.username)) {
+    if (await studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
       let response = await deleteStudentFromCourse(courseRequest, decodedToken.username);
       response.json({
         statusCode: 200,
@@ -172,38 +172,38 @@ async function studentExists(username) {
   });
 }
 
-async function addStudentToCourse(courseRequest, teacherUsername) {
+async function addStudentToCourse(courseRequest, studentUsername) {
   let courseList = (await courseModel.find({
     name: courseRequest.name,
-    teacherUsername
+    teacherUsername: courseRequest.teacherUsername
   })).students;
 
-  let studentFilter = courseList.filter(student => student === courseRequest.studentUsername);
+  let studentFilter = courseList.filter(student => student === studentUsername);
   if (!studentFilter) {
-    courseList.push(courseRequest.studentUsername);
+    courseList.push(studentUsername);
     await courseModel.update({
       name: courseRequest.name,
-      teacherUsername
+      teacherUsername: courseRequest.teacherUsername
     }, { students: courseList });
     return "student added to course";
-  } else return "student is already signed";
+  } else return "student is already signed up";
 }
 
-async function deleteStudentFromCourse(courseRequest, teacherUsername) {
+async function deleteStudentFromCourse(courseRequest, studentUsername) {
   let courseList = (await courseModel.find({
     name: courseRequest.name,
-    teacherUsername
+    teacherUsername: courseRequest.teacherUsername
   })).students;
 
-  let studentFilter = courseList.filter(student => student === courseRequest.studentUsername);
+  let studentFilter = courseList.filter(student => student === studentUsername);
   if (studentFilter) {
-    courseList = courseList.filter(student => student !== courseRequest.studentUsername);
+    courseList = courseList.filter(student => student !== studentUsername);
     await courseModel.update({
       name: courseRequest.name,
-      teacherUsername
+      teacherUsername: courseRequest.teacherUsername
     }, { students: courseList });
     return "student deleted from course";
-  } else return "student does not signed this course";
+  } else return "student does not signed up to this course";
 
 }
 

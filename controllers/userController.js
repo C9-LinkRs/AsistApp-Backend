@@ -67,8 +67,8 @@ router.delete("/delete", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    await userModel.destroy({ username: decodedToken.username });
-    await cacheTokenModel.destroy({ username: decodedToken.username });
+    await userModel.findOneAndDelete({ username: decodedToken.username });
+    await cacheTokenModel.findOneAndDelete({ username: decodedToken.username });
     response.json({
       statusCode: 200,
       message: "user deleted"
@@ -131,9 +131,9 @@ router.post("/login", async (request, response) => {
 router.get("/logout", async (request, response) => {
   let accessToken = request.headers.authorization;
   try {
-    let decodedToken = jsonWebToken.verify(accessToken, proccess.env.SECRET_KEY, { ignoreExpiration: true });
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY, { ignoreExpiration: true });
 
-    await cacheTokenModel.destroy({ username: decodedToken.username });
+    await cacheTokenModel.findOneAndDelete({ username: decodedToken.username });
     response.json({
       statusCode: 200,
       message: "logged out"
@@ -141,6 +141,40 @@ router.get("/logout", async (request, response) => {
   } catch (error) {
     console.log(error);
     let message = error.message || "error logging out";
+    let statusCode = (error.message === "jwt expired") ? 401 : 500;
+    response.json({
+      statusCode,
+      message
+    });
+  }
+});
+
+router.get("/info", async (request, response) => {
+  let accessToken = request.headers.authorization;
+  try {
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
+
+    if (await userExists({ username: decodedToken.username })) {
+      let dbResponse = (await userModel.find({ username: decodedToken.username }))[0];
+      let userInfo = {
+        username: dbResponse.username,
+        email: dbResponse.email,
+        isTeacher: dbResponse.isTeacher,
+        qrCode: dbResponse.qrCode
+      };
+      response.json({
+        statusCode: 200,
+        userInfo
+      });
+    } else {
+      response.json({
+        statusCode: 404,
+        message: "user not found"
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    let message = error.message || "internal server error";
     let statusCode = (error.message === "jwt expired") ? 401 : 500;
     response.json({
       statusCode,
@@ -164,19 +198,25 @@ function validRequest(body, isCreating) {
 
 async function userExists(body) {
   return await userModel.exists({
-    $or: [{
-      username: body.username,
-      email: body.email
-    }]
+    $or: [
+      { username: body.username },
+      { email: body.email }
+    ]
   });
 }
 
 async function getRefreshToken(body) {
   try {
     let dbResponse = await cacheTokenModel.find({ username: body.username });
-    return dbResponse.refreshToken;
+    if (dbResponse.length) {
+      jsonWebToken.verify(dbResponse[0].refreshToken, process.env.SECRET_KEY);
+
+      return dbResponse[0].refreshToken;
+    } else return undefined;
   } catch (error) {
     console.log(error);
+    console.log("deleting refresh token from db if exists");
+    await cacheTokenModel.findOneAndDelete({ username: body.username });
     return undefined;
   }
 }

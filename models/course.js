@@ -15,7 +15,7 @@ const courseSchema = new mongoose.Schema({
   },
   schedule: {
     type: Array,
-    required: false
+    required: true
   }
 });
 

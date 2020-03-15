@@ -24,12 +24,15 @@ router.get("/", async (request, response) => {
 });
 
 router.post("/refresh", async (request, response) => {
+  let accessToken = request.headers.authorization;
   let userRequest = request.body;
   try {
-    if (await refreshExists(userRequest)) {
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY, { ignoreExpiration: true });
+
+    if (await refreshExists(decodedToken.username, userRequest.refreshToken)) {
       jsonWebToken.verify(userRequest.refreshToken, process.env.SECRET_KEY);
 
-      let newAccessToken = jsonWebToken.sign(userRequest.username, process.env.SECRET_KEY, { expiresIn: process.env.SECRET_KEY});
+      let newAccessToken = jsonWebToken.sign({ username: decodedToken.username }, process.env.SECRET_KEY, { expiresIn: process.env.TOKEN_LIFE});
       response.json({
         statusCode: 200,
         accessToken: newAccessToken
@@ -51,10 +54,10 @@ router.post("/refresh", async (request, response) => {
   }
 });
 
-async function refreshExists(body) {
+async function refreshExists(username, refreshToken) {
   return await cacheTokenModel.exists({
-    username: body.username,
-    refreshToken: body.refreshToken
+    username,
+    refreshToken
   });
 }
 

@@ -99,11 +99,40 @@ router.post("/addStudent", async (request, response) => {
   try {
     let decodedToken = json.verify(accessToken, process.env.SECRET_KEY);
 
-    if (await studentExists(courseRequest.username) && await courseExists(courseRequest.name, decodedToken.username)) {
-      await addStudentToCourse(courseRequest, decodedToken.username);
+    if (await studentExists(courseRequest.studentUsername) && await courseExists(courseRequest.name, decodedToken.username)) {
+      let response = await addStudentToCourse(courseRequest, decodedToken.username);
       response.json({
         statusCode: 200,
-        message: "student added to course"
+        message: response
+      });
+    } else {
+      response.json({
+        statusCode: 404,
+        message: "student or course not found"
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    let message = error.message || "internal server error";
+    let statusCode = (error.message === "jwt expired") ? 401 : 500;
+    response.json({
+      statusCode,
+      message
+    });
+  }
+});
+
+router.delete("/deleteStudent", async (request, response) => {
+  let accessToken = request.headers.authorization;
+  let courseRequest = request.body;
+  try {
+    let decodedToken = json.verify(accessToken, process.env.SECRET_KEY);
+
+    if (await studentExists(courseRequest.studentUsername) && await courseExists(courseRequest.name, decodedToken.username)) {
+      let response = await deleteStudentFromCourse(courseRequest, decodedToken.username);
+      response.json({
+        statusCode: 200,
+        message: response
       });
     } else {
       response.json({
@@ -124,7 +153,7 @@ router.post("/addStudent", async (request, response) => {
 
 async function courseExists(name, teacherUsername) {
   return await courseModel.exists({
-    name, 
+    name,
     teacherUsername
   });
 }
@@ -144,6 +173,37 @@ async function studentExists(username) {
 }
 
 async function addStudentToCourse(courseRequest, teacherUsername) {
+  let courseList = (await courseModel.find({
+    name: courseRequest.name,
+    teacherUsername
+  })).students;
+
+  let studentFilter = courseList.filter(student => student === courseRequest.studentUsername);
+  if (!studentFilter) {
+    courseList.push(courseRequest.studentUsername);
+    await courseModel.update({
+      name: courseRequest.name,
+      teacherUsername
+    }, { students: courseList });
+    return "student added to course";
+  } else return "student is already signed";
+}
+
+async function deleteStudentFromCourse(courseRequest, teacherUsername) {
+  let courseList = (await courseModel.find({
+    name: courseRequest.name,
+    teacherUsername
+  })).students;
+
+  let studentFilter = courseList.filter(student => student === courseRequest.studentUsername);
+  if (studentFilter) {
+    courseList = courseList.filter(student => student !== courseRequest.studentUsername);
+    await courseModel.update({
+      name: courseRequest.name,
+      teacherUsername
+    }, { students: courseList });
+    return "student deleted from course";
+  } else return "student does not signed this course";
 
 }
 

@@ -66,7 +66,7 @@ router.delete("/delete", async (request, response) => {
   let accessToken = request.headers.authorization;
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
-    
+
     await userModel.destroy({ username: decodedToken.username });
     await cacheTokenModel.destroy({ username: decodedToken.username });
     response.json({
@@ -91,7 +91,7 @@ router.post("/login", async (request, response) => {
       if (await userExists(userRequest)) {
         let accessToken = jsonWebToken.sign({ username: userRequest.username }, process.env.SECRET_KEY, { expiresIn: process.env.TOKEN_LIFE });
         let refreshToken = await getRefreshToken(userRequest);
-        
+
         if (!refreshToken) {
           refreshToken = jsonWebToken.sign({ username: userRequest.username }, process.env.SECRET_KEY, { expiresIn: process.env.REFRESH_TOKEN_LIFE });
           let newRefreshToken = new cacheTokenModel({
@@ -132,7 +132,7 @@ router.get("/logout", async (request, response) => {
   let accessToken = request.headers.authorization;
   try {
     let decodedToken = jsonWebToken.verify(accessToken, proccess.env.SECRET_KEY, { ignoreExpiration: true });
-    
+
     await cacheTokenModel.destroy({ username: decodedToken.username });
     response.json({
       statusCode: 200,
@@ -164,9 +164,10 @@ function validRequest(body, isCreating) {
 
 async function userExists(body) {
   return await userModel.exists({
-    username: body.username,
-    password: body.password,
-    email: body.email
+    $or: [{
+      username: body.username,
+      email: body.email
+    }]
   });
 }
 

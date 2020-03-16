@@ -174,20 +174,54 @@ async function studentExists(username) {
   });
 }
 
-async function conflictMatrix(courseSchedule, teacherUsername) {
+async function teacherCanCreateCourse(newCourseSchedule, teacherUsername) {
   let teacherCourses = await courseModel.find({ teacherUsername });
   if (teacherCourses.length) {
-    for(let course of teacherCourses) {
+    for (let course of teacherCourses) {
       let schedule = course.schedule;
-      let scheduleFilter = schedule.filter(classHours => hoursInCommon(classHours, courseSchedule));
-      if (scheduleFilter) return true;
+      if (conflictMatrix(schedule, newCourseSchedule)) return false;
     }
   }
-  return false;
+  return true;
 }
 
-function hoursInCommon(classHours, courseSchedule) {
+async function studentCanTakeCourse(courseInfo, studentUsername) {
+  let courseToSignIn = await courseModel.find({
+    name: courseInfo.name,
+    teacherUsername: courseInfo.teacherUsername
+  });
+  let studentSchedule = await courseModel.find({
+    "students.username": studentUsername
+  });
+  if (courseToSignIn.length && studentSchedule.length) {
+    for (let course of studentSchedule) {
+      let schedule = course.schedule;
+      if (conflictMatrix(schedule, courseToSignIn[0])) return false;
+    }
+  }
+  return true;
+}
 
+async function conflictMatrix(schedule, newCourseSchedule) {
+  let scheduleFilter = schedule.filter(classHour => hoursInCommon(classHour, newCourseSchedule));
+  return scheduleFilter;
+}
+
+function hoursInCommon(classHour, newCourseSchedule) {
+  let sameHours = newCourseSchedule.filter(newCourseClassHour => classHour.day === newCourseClassHour.day);
+  for (let courseClassHour of sameHours) {
+    let courseHourArray = courseClassHour.day.split("-");
+    let classHourArray = classHour.day.split("-");
+
+    let courseStart = convertDate(courseHourArray[0]);
+    let courseEnd = convertDate(courseClassHour[1]);
+
+    let classStart = convertDate(classHourArray[0]);
+    let classEnd = convertDate(classHourArray[1]);
+
+    if (classStart <= courseStart && classStart <= courseEnd || classEnd <= courseStart && classEnd <= courseEnd) return true;
+  }
+  return false;
 }
 
 function convertDate(stringDate) {

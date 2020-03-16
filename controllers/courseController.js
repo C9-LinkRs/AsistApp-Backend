@@ -27,12 +27,14 @@ router.post("/create", async (request, response) => {
   let accessToken = request.headers.authorization;
   let courseRequest = request.body;
   try {
-    let decodedToken = jsonWebToken.sign(accessToken, process.env.SECRET_KEY);
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
+    conflictMatrix(courseRequest.schedule, decodedToken.username);
     if (!await courseExists(courseRequest.name, decodedToken.username) && await teacherExists(decodedToken.username)) {
       let newCourse = new courseModel({
         name: courseRequest.name,
-        teacherUsername: decodedToken.username
+        teacherUsername: decodedToken.username,
+        schedule: courseRequest.schedule
       });
       await newCourse.save();
       response.json({
@@ -68,7 +70,7 @@ router.delete("/delete", async (request, response) => {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
     if (await courseExists(courseRequest.name, decodedToken.username)) {
-      await courseModel.destroy({
+      await courseModel.findOneAndDelete({
         teacherUsername: decodedToken.username,
         name: courseRequest.name
       });
@@ -170,6 +172,26 @@ async function studentExists(username) {
     username,
     isTeacher: false
   });
+}
+
+async function conflictMatrix(courseSchedule, teacherUsername) {
+  let teacherCourses = await courseModel.find({ teacherUsername });
+  if (teacherCourses.length) {
+    for(let course of teacherCourses) {
+      let schedule = course.schedule;
+      let scheduleFilter = schedule.filter(classHours => hoursInCommon(classHours, courseSchedule));
+      if (scheduleFilter) return true;
+    }
+  }
+  return false;
+}
+
+function hoursInCommon(classHours, courseSchedule) {
+
+}
+
+function convertDate(stringDate) {
+  return new Date(`1/1/1111 ${stringDate}`);
 }
 
 async function addStudentToCourse(courseRequest, studentUsername) {

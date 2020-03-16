@@ -29,18 +29,24 @@ router.post("/create", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    conflictMatrix(courseRequest.schedule, decodedToken.username);
     if (!await courseExists(courseRequest.name, decodedToken.username) && await teacherExists(decodedToken.username)) {
-      let newCourse = new courseModel({
-        name: courseRequest.name,
-        teacherUsername: decodedToken.username,
-        schedule: courseRequest.schedule
-      });
-      await newCourse.save();
-      response.json({
-        statusCode: 200,
-        message: "course added successful"
-      });
+      if (await teacherCanCreateCourse(courseRequest.schedule, decodedToken.username)) {
+        let newCourse = new courseModel({
+          name: courseRequest.name,
+          teacherUsername: decodedToken.username,
+          schedule: courseRequest.schedule
+        });
+        await newCourse.save();
+        response.json({
+          statusCode: 200,
+          message: "course added successful"
+        });
+      } else {
+        response.json({
+          statusCode: 200,
+          message: "teacher can not create the course due to conflict matrix"
+        });
+      }
     } else if (courseExists(courseRequest.name, decodedToken.username)) {
       response.json({
         statusCode: 200,
@@ -102,11 +108,18 @@ router.post("/addStudent", async (request, response) => {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
     if (await studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
-      let response = await addStudentToCourse(courseRequest, decodedToken.username);
-      response.json({
-        statusCode: 200,
-        message: response
-      });
+      if (await studentCanTakeCourse(courseRequest, decodedToken.username)) {
+        let processResponse = await addStudentToCourse(courseRequest, decodedToken.username);
+        response.json({
+          statusCode: 200,
+          message: processResponse
+        });
+      } else {
+        response.json({
+          statusCode: 200,
+          message: "student can not sign up the course due to conflict matrix"
+        })
+      }
     } else {
       response.json({
         statusCode: 404,
@@ -186,58 +199,31 @@ async function teacherCanCreateCourse(newCourseSchedule, teacherUsername) {
 }
 
 async function studentCanTakeCourse(courseInfo, studentUsername) {
-  let courseToSignIn = await courseModel.find({
+  let courseToSignUp = await courseModel.find({
     name: courseInfo.name,
     teacherUsername: courseInfo.teacherUsername
   });
   let studentSchedule = await courseModel.find({
-    "students.username": studentUsername
+    "students": { $in: [studentUsername] }
   });
-  if (courseToSignIn.length && studentSchedule.length) {
+  if (courseToSignUp.length && studentSchedule.length) {
     for (let course of studentSchedule) {
       let schedule = course.schedule;
-      if (conflictMatrix(schedule, courseToSignIn[0])) return false;
+      if (conflictMatrix(schedule, courseToSignUp[0].schedule)) return false;
     }
   }
   return true;
-}
-
-async function conflictMatrix(schedule, newCourseSchedule) {
-  let scheduleFilter = schedule.filter(classHour => hoursInCommon(classHour, newCourseSchedule));
-  return scheduleFilter;
-}
-
-function hoursInCommon(classHour, newCourseSchedule) {
-  let sameHours = newCourseSchedule.filter(newCourseClassHour => classHour.day === newCourseClassHour.day);
-  for (let courseClassHour of sameHours) {
-    let courseHourArray = courseClassHour.day.split("-");
-    let classHourArray = classHour.day.split("-");
-
-    let courseStart = convertDate(courseHourArray[0]);
-    let courseEnd = convertDate(courseClassHour[1]);
-
-    let classStart = convertDate(classHourArray[0]);
-    let classEnd = convertDate(classHourArray[1]);
-
-    if (classStart <= courseStart && classStart <= courseEnd || classEnd <= courseStart && classEnd <= courseEnd) return true;
-  }
-  return false;
-}
-
-function convertDate(stringDate) {
-  return new Date(`1/1/1111 ${stringDate}`);
 }
 
 async function addStudentToCourse(courseRequest, studentUsername) {
   let courseList = (await courseModel.find({
     name: courseRequest.name,
     teacherUsername: courseRequest.teacherUsername
-  })).students;
-
+  }))[0].students;
   let studentFilter = courseList.filter(student => student === studentUsername);
-  if (!studentFilter) {
+  if (!studentFilter.length) {
     courseList.push(studentUsername);
-    await courseModel.update({
+    await courseModel.updateOne({
       name: courseRequest.name,
       teacherUsername: courseRequest.teacherUsername
     }, { students: courseList });
@@ -261,6 +247,40 @@ async function deleteStudentFromCourse(courseRequest, studentUsername) {
     return "student deleted from course";
   } else return "student does not signed up to this course";
 
+}
+
+function conflictMatrix(schedule, newCourseSchedule) {
+  let scheduleFilter = schedule.filter(classHour => hoursInCommon(classHour, newCourseSchedule));
+  return scheduleFilter.length;
+}
+
+function hoursInCommon(classHour, newCourseSchedule) {
+  let sameHours = newCourseSchedule.filter(newCourseClassHour => classHour.day === newCourseClassHour.day);
+  for (let courseClassHour of sameHours) {
+    let courseHourArray = courseClassHour.hours.split("-");
+    let classHourArray = classHour.hours.split("-");
+
+    let courseStart = convertDate(courseHourArray[0]);
+    let courseEnd = convertDate(courseHourArray[1]);
+
+    let classStart = convertDate(classHourArray[0]);
+    let classEnd = convertDate(classHourArray[1]);
+
+    if (classContainsCourse(classStart, classEnd, courseStart, courseEnd) || courseContainsClass(classStart, classEnd, courseStart, courseEnd)) return true;
+  }
+  return false;
+}
+
+function convertDate(stringDate) {
+  return new Date(`1/1/1111 ${stringDate}`);
+}
+
+function classContainsCourse(classStart, classEnd, courseStart, courseEnd) {
+  return classStart <= courseStart && courseStart <= classEnd || classStart <= courseEnd && courseEnd <= classEnd;
+}
+
+function courseContainsClass(classStart, classEnd, courseStart, courseEnd) {
+  return courseStart <= classStart && classStart <= courseEnd || courseStart <= classEnd && classEnd <= courseEnd;
 }
 
 module.exports = router;

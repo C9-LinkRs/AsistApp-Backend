@@ -47,7 +47,7 @@ router.post("/create", async (request, response) => {
           message: "teacher can not create the course due to conflict matrix"
         });
       }
-    } else if (courseExists(courseRequest.name, decodedToken.username)) {
+    } else if (await courseExists(courseRequest.name, decodedToken.username)) {
       response.json({
         statusCode: 200,
         message: "course already exists"
@@ -141,13 +141,13 @@ router.delete("/deleteStudent", async (request, response) => {
   let accessToken = request.headers.authorization;
   let courseRequest = request.body;
   try {
-    let decodedToken = json.verify(accessToken, process.env.SECRET_KEY);
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
     if (await studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
-      let response = await deleteStudentFromCourse(courseRequest, decodedToken.username);
+      let processResponse = await deleteStudentFromCourse(courseRequest, decodedToken.username);
       response.json({
         statusCode: 200,
-        message: response
+        message: processResponse
       });
     } else {
       response.json({
@@ -221,6 +221,7 @@ async function addStudentToCourse(courseRequest, studentUsername) {
     teacherUsername: courseRequest.teacherUsername
   }))[0].students;
   let studentFilter = courseList.filter(student => student === studentUsername);
+
   if (!studentFilter.length) {
     courseList.push(studentUsername);
     await courseModel.updateOne({
@@ -235,12 +236,12 @@ async function deleteStudentFromCourse(courseRequest, studentUsername) {
   let courseList = (await courseModel.find({
     name: courseRequest.name,
     teacherUsername: courseRequest.teacherUsername
-  })).students;
+  }))[0].students;
 
   let studentFilter = courseList.filter(student => student === studentUsername);
-  if (studentFilter) {
+  if (studentFilter.length) {
     courseList = courseList.filter(student => student !== studentUsername);
-    await courseModel.update({
+    await courseModel.updateOne({
       name: courseRequest.name,
       teacherUsername: courseRequest.teacherUsername
     }, { students: courseList });

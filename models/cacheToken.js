@@ -11,4 +11,4 @@ const cacheTokenSchema = new mongoose.Schema({
   }
 });
 
-module.exports = mongoose.model('CacheToken', cacheTokenSchema);
+module.exports = mongoose.model("CacheToken", cacheTokenSchema);

@@ -16,7 +16,15 @@ const courseSchema = new mongoose.Schema({
   schedule: {
     type: Array,
     required: true
+  },
+  startDate: {
+    type: String,
+    required: true
+  },
+  endDate: {
+    type: String,
+    required: true
   }
 });
 
-module.exports = mongoose.model('Course', courseSchema);
+module.exports = mongoose.model("Course", courseSchema);

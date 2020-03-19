@@ -29,12 +29,14 @@ router.post("/create", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (!await courseExists(courseRequest.name, decodedToken.username) && await teacherExists(decodedToken.username)) {
-      if (await teacherCanCreateCourse(courseRequest.schedule, decodedToken.username)) {
+    if (courseRequest && !await courseExists(courseRequest.name, decodedToken.username) && await teacherExists(decodedToken.username) && courseRequest.startDate && courseRequest.endDate) {
+      if (await teacherCanCreateCourse(courseRequest, decodedToken.username)) {
         let newCourse = new courseModel({
           name: courseRequest.name,
           teacherUsername: decodedToken.username,
-          schedule: courseRequest.schedule
+          schedule: courseRequest.schedule,
+          startDate: courseRequest.startDate,
+          endDate: courseRequest.endDate
         });
         await newCourse.save();
         response.json({
@@ -192,7 +194,8 @@ async function teacherCanCreateCourse(newCourseSchedule, teacherUsername) {
   if (teacherCourses.length) {
     for (let course of teacherCourses) {
       let schedule = course.schedule;
-      if (conflictMatrix(schedule, newCourseSchedule)) return false;
+      if (!sameSemester(course, newCourseSchedule)) continue;
+      if (conflictMatrix(schedule, newCourseSchedule.schedule)) return false;
     }
   }
   return true;
@@ -209,6 +212,7 @@ async function studentCanTakeCourse(courseInfo, studentUsername) {
   if (courseToSignUp.length && studentSchedule.length) {
     for (let course of studentSchedule) {
       let schedule = course.schedule;
+      if (!sameSemester(course, courseToSignUp[0])) continue;
       if (conflictMatrix(schedule, courseToSignUp[0].schedule)) return false;
     }
   }
@@ -248,6 +252,14 @@ async function deleteStudentFromCourse(courseRequest, studentUsername) {
     return "student deleted from course";
   } else return "student does not signed up to this course";
 
+}
+
+function sameSemester(course, newCourse) {
+  let courseStart = new Date(course.startDate);
+  let courseEnd = new Date(course.endDate);
+  let newCourseStart = new Date(newCourse.startDate);
+  let newCourseEnd = new Date(newCourse.endDate);
+  return classContainsCourse(courseStart, courseEnd, newCourseStart, newCourseEnd) || courseContainsClass(courseStart, courseEnd, newCourseStart, newCourseEnd);
 }
 
 function conflictMatrix(schedule, newCourseSchedule) {

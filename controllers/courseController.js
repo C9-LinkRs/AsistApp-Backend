@@ -4,6 +4,8 @@ let jsonWebToken = require("jsonwebtoken");
 const courseModel = require("../models/course");
 const userModel = require("../models/user");
 
+const userHelper = require("../helpers/userHelper");
+
 let router = express.Router();
 
 router.get("/", async (request, response) => {
@@ -29,7 +31,7 @@ router.post("/create", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (courseRequest && !await courseExists(courseRequest.name, decodedToken.username) && await teacherExists(decodedToken.username) && courseRequest.startDate && courseRequest.endDate) {
+    if (courseRequest && !await courseExists(courseRequest.name, decodedToken.username) && await userHelper.teacherExists(decodedToken.username) && courseRequest.startDate && courseRequest.endDate) {
       if (await teacherCanCreateCourse(courseRequest, decodedToken.username)) {
         let newCourse = new courseModel({
           name: courseRequest.name,
@@ -109,7 +111,7 @@ router.post("/addStudent", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (await studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
+    if (await userHelper.studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
       if (await studentCanTakeCourse(courseRequest, decodedToken.username)) {
         let processResponse = await addStudentToCourse(courseRequest, decodedToken.username);
         response.json({
@@ -145,7 +147,7 @@ router.delete("/deleteStudent", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (await studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
+    if (await userHelper.studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
       let processResponse = await deleteStudentFromCourse(courseRequest, decodedToken.username);
       response.json({
         statusCode: 200,
@@ -172,20 +174,6 @@ async function courseExists(name, teacherUsername) {
   return await courseModel.exists({
     name,
     teacherUsername
-  });
-}
-
-async function teacherExists(username) {
-  return await userModel.exists({
-    username,
-    isTeacher: true
-  });
-}
-
-async function studentExists(username) {
-  return await userModel.exists({
-    username,
-    isTeacher: false
   });
 }
 

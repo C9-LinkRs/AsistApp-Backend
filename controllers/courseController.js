@@ -5,6 +5,7 @@ const courseModel = require("../models/course");
 const userModel = require("../models/user");
 
 const userHelper = require("../helpers/userHelper");
+const courseHelper = require("../helpers/courseHelper");
 
 let router = express.Router();
 
@@ -31,7 +32,7 @@ router.post("/create", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (courseRequest && !await courseExists(courseRequest.name, decodedToken.username) && await userHelper.teacherExists(decodedToken.username) && courseRequest.startDate && courseRequest.endDate) {
+    if (courseRequest && !await courseHelper.courseExists(courseRequest.name, decodedToken.username) && await userHelper.teacherExists(decodedToken.username) && courseRequest.startDate && courseRequest.endDate) {
       if (await teacherCanCreateCourse(courseRequest, decodedToken.username)) {
         let newCourse = new courseModel({
           name: courseRequest.name,
@@ -51,7 +52,7 @@ router.post("/create", async (request, response) => {
           message: "teacher can not create the course due to conflict matrix"
         });
       }
-    } else if (await courseExists(courseRequest.name, decodedToken.username)) {
+    } else if (await courseHelper.courseExists(courseRequest.name, decodedToken.username)) {
       response.json({
         statusCode: 200,
         message: "course already exists"
@@ -79,7 +80,7 @@ router.delete("/delete", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (await courseExists(courseRequest.name, decodedToken.username)) {
+    if (await courseHelper.courseExists(courseRequest.name, decodedToken.username)) {
       await courseModel.findOneAndDelete({
         teacherUsername: decodedToken.username,
         name: courseRequest.name
@@ -111,7 +112,7 @@ router.post("/addStudent", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (await userHelper.studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
+    if (await userHelper.studentExists(decodedToken.username) && await courseHelper.courseExists(courseRequest.name, courseRequest.teacherUsername)) {
       if (await studentCanTakeCourse(courseRequest, decodedToken.username)) {
         let processResponse = await addStudentToCourse(courseRequest, decodedToken.username);
         response.json({
@@ -147,7 +148,7 @@ router.delete("/deleteStudent", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
 
-    if (await userHelper.studentExists(decodedToken.username) && await courseExists(courseRequest.name, courseRequest.teacherUsername)) {
+    if (await userHelper.studentExists(decodedToken.username) && await courseHelper.courseExists(courseRequest.name, courseRequest.teacherUsername)) {
       let processResponse = await deleteStudentFromCourse(courseRequest, decodedToken.username);
       response.json({
         statusCode: 200,
@@ -170,20 +171,13 @@ router.delete("/deleteStudent", async (request, response) => {
   }
 });
 
-async function courseExists(name, teacherUsername) {
-  return await courseModel.exists({
-    name,
-    teacherUsername
-  });
-}
-
 async function teacherCanCreateCourse(newCourseSchedule, teacherUsername) {
   let teacherCourses = await courseModel.find({ teacherUsername });
   if (teacherCourses.length) {
     for (let course of teacherCourses) {
       let schedule = course.schedule;
-      if (!sameSemester(course, newCourseSchedule)) continue;
-      if (conflictMatrix(schedule, newCourseSchedule.schedule)) return false;
+      if (!courseHelper.sameSemester(course, newCourseSchedule)) continue;
+      if (courseHelper.conflictMatrix(schedule, newCourseSchedule.schedule)) return false;
     }
   }
   return true;
@@ -195,13 +189,13 @@ async function studentCanTakeCourse(courseInfo, studentUsername) {
     teacherUsername: courseInfo.teacherUsername
   });
   let studentSchedule = await courseModel.find({
-    "students": { $in: [studentUsername] }
+    "students": { $in: [ studentUsername ] }
   });
   if (courseToSignUp.length && studentSchedule.length) {
     for (let course of studentSchedule) {
       let schedule = course.schedule;
-      if (!sameSemester(course, courseToSignUp[0])) continue;
-      if (conflictMatrix(schedule, courseToSignUp[0].schedule)) return false;
+      if (!courseHelper.sameSemester(course, courseToSignUp[0])) continue;
+      if (courseHelper.conflictMatrix(schedule, courseToSignUp[0].schedule)) return false;
     }
   }
   return true;
@@ -240,48 +234,6 @@ async function deleteStudentFromCourse(courseRequest, studentUsername) {
     return "student deleted from course";
   } else return "student does not signed up to this course";
 
-}
-
-function sameSemester(course, newCourse) {
-  let courseStart = new Date(course.startDate);
-  let courseEnd = new Date(course.endDate);
-  let newCourseStart = new Date(newCourse.startDate);
-  let newCourseEnd = new Date(newCourse.endDate);
-  return classContainsCourse(courseStart, courseEnd, newCourseStart, newCourseEnd) || courseContainsClass(courseStart, courseEnd, newCourseStart, newCourseEnd);
-}
-
-function conflictMatrix(schedule, newCourseSchedule) {
-  let scheduleFilter = schedule.filter(classHour => hoursInCommon(classHour, newCourseSchedule));
-  return scheduleFilter.length;
-}
-
-function hoursInCommon(classHour, newCourseSchedule) {
-  let sameHours = newCourseSchedule.filter(newCourseClassHour => classHour.day === newCourseClassHour.day);
-  for (let courseClassHour of sameHours) {
-    let courseHourArray = courseClassHour.hours.split("-");
-    let classHourArray = classHour.hours.split("-");
-
-    let courseStart = convertDate(courseHourArray[0]);
-    let courseEnd = convertDate(courseHourArray[1]);
-
-    let classStart = convertDate(classHourArray[0]);
-    let classEnd = convertDate(classHourArray[1]);
-
-    if (classContainsCourse(classStart, classEnd, courseStart, courseEnd) || courseContainsClass(classStart, classEnd, courseStart, courseEnd)) return true;
-  }
-  return false;
-}
-
-function convertDate(stringDate) {
-  return new Date(`1/1/1111 ${stringDate}`);
-}
-
-function classContainsCourse(classStart, classEnd, courseStart, courseEnd) {
-  return classStart <= courseStart && courseStart <= classEnd || classStart <= courseEnd && courseEnd <= classEnd;
-}
-
-function courseContainsClass(classStart, classEnd, courseStart, courseEnd) {
-  return courseStart <= classStart && classStart <= courseEnd || courseStart <= classEnd && classEnd <= courseEnd;
 }
 
 module.exports = router;

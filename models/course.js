@@ -1,11 +1,7 @@
 let mongoose = require("mongoose");
 
 const courseSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
-  },
-  teacherUsername: {
+  courseId: {
     type: String,
     required: true
   },
@@ -24,6 +20,10 @@ const courseSchema = new mongoose.Schema({
   endDate: {
     type: String,
     required: true
+  },
+  attendanceList: {
+    type: Array,
+    required: false
   }
 });
 

@@ -3,7 +3,6 @@ let jsonWebToken = require("jsonwebtoken");
 let mongoose = require("mongoose");
 
 let courseModel = require("../models/course");
-let userModel = require("../models/user");
 
 const userHelper = require("../helpers/userHelper");
 const courseHelper = require("../helpers/courseHelper");

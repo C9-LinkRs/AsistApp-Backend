@@ -26,6 +26,10 @@ module.exports.conflictMatrix = (schedule, newCourseSchedule) => {
   return scheduleFilter.length;
 }
 
+module.exports.convertDate = (stringDate) => {
+  return convertDate(stringDate);
+};
+
 function hoursInCommon(classHour, newCourseSchedule) {
   let sameHours = newCourseSchedule.filter(newCourseClassHour => classHour.day === newCourseClassHour.day);
   for (let courseClassHour of sameHours) {

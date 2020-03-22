@@ -2,7 +2,6 @@ let express = require("express");
 let jsonWebToken = require("jsonwebtoken");
 
 const courseModel = require("../models/course");
-const userModel = require("../models/user");
 
 const userHelper = require("../helpers/userHelper");
 const courseHelper = require("../helpers/courseHelper");

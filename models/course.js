@@ -1,7 +1,11 @@
 let mongoose = require("mongoose");
 
 const courseSchema = new mongoose.Schema({
-  courseId: {
+  name: {
+    type: String,
+    required: true
+  },
+  teacherUsername: {
     type: String,
     required: true
   },

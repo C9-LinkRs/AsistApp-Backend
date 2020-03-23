@@ -170,6 +170,40 @@ router.delete("/deleteStudent", async (request, response) => {
   }
 });
 
+router.get("/signedCourses", async (request, response) => {
+  let accessToken = request.headers.authorization;
+  try {
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
+
+    if (await userHelper.studentExists(decodedToken.username)) {
+      let courses = await getStudentCourses(decodedToken.username);
+      response.json({
+        statusCode: 200,
+        courses
+      });
+    } else if (await userHelper.teacherExists(decodedToken.username)) {
+      let courses = await getTeacherCourses(decodedToken.username);
+      response.json({
+        statusCode: 200,
+        courses
+      });
+    } else {
+      response.json({
+        statusCode: 404,
+        message: "user not found"
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    let message = error.message || "internal server error";
+    let statusCode = (error.message === "jwt expired") ? 401 : 500;
+    response.json({
+      statusCode,
+      message
+    });
+  }
+});
+
 async function teacherCanCreateCourse(newCourseSchedule, teacherUsername) {
   let teacherCourses = await courseModel.find({ teacherUsername });
   if (teacherCourses.length) {
@@ -188,7 +222,7 @@ async function studentCanTakeCourse(courseInfo, studentUsername) {
     teacherUsername: courseInfo.teacherUsername
   });
   let studentSchedule = await courseModel.find({
-    "students": { $in: [ studentUsername ] }
+    "students": { $in: [studentUsername] }
   });
   if (courseToSignUp.length && studentSchedule.length) {
     for (let course of studentSchedule) {
@@ -233,6 +267,28 @@ async function deleteStudentFromCourse(courseRequest, studentUsername) {
     return "student deleted from course";
   } else return "student does not signed up to this course";
 
+}
+
+async function getStudentCourses(username) {
+  return await courseModel.find({ students: username },
+    [
+      "_id",
+      "name",
+      "teacherUsername",
+      "startDate",
+      "endDate"
+    ]);
+}
+
+async function getTeacherCourses(teacherUsername) {
+  return await courseModel.find({ teacherUsername },
+    [
+      "_id",
+      "name",
+      "teacherUsername",
+      "startDate",
+      "endDate"
+    ]);
 }
 
 module.exports = router;

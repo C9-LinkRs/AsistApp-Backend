@@ -51,7 +51,8 @@ module.exports.validHour = (checkHour, classHour) => {
 
 module.exports.studentChecked = async (username, attRequest) => {
   let course = await courseModel.find({
-    _id: mongoose.Types.ObjectId(attRequest.courseId)
+    name: attRequest.name,
+    teacherUsername: attRequest.teacherUsername
   });
   if (course.length) {
     let listFilter = course[0].attendanceList.filter(record => record.username === username && record.date === attRequest.date);

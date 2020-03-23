@@ -1,6 +1,5 @@
 let express = require("express");
 let jsonWebToken = require("jsonwebtoken");
-let mongoose = require("mongoose");
 
 let courseModel = require("../models/course");
 
@@ -33,6 +32,7 @@ router.post("/check", async (request, response) => {
       });
     } else if (await userHelper.teacherExists(decodedToken.username)) { // If teacher checks list from reading students QR code from them phones
       if (await userHelper.studentExists(attRequest.studentUsername)) {
+        attRequest.teacherUsername = decodedToken.username;
         let checkResponse = await checkStudent(attRequest.studentUsername, attRequest);
         response.json({
           statusCode: checkResponse.statusCode,
@@ -67,9 +67,12 @@ router.get("/link", async (request, response) => {
 });
 
 async function checkStudent(username, attRequest) {
-  if (await courseHelper.courseExists(attRequest.courseId)) {
+  if (await courseHelper.courseExists(attRequest.name, attRequest.teacherUsername)) {
     if (!await attendanceHelper.studentChecked(username, attRequest)) {
-      let course = await courseModel.find({ _id: mongoose.Types.ObjectId(attRequest.courseId) });
+      let course = await courseModel.find({
+        name: attRequest.name,
+        teacherUsername: attRequest.teacherUsername
+      });
       if (attendanceHelper.validSemesterDay(attRequest.date, course[0])) {
         let courseHours = attendanceHelper.getClassHours(attRequest.date, course[0].schedule);
         if (courseHours) {
@@ -82,7 +85,8 @@ async function checkStudent(username, attRequest) {
               isLate
             });
             await courseModel.updateOne({
-              _id: mongoose.Types.ObjectId(attRequest.courseId)
+              name: attRequest.name,
+              teacherUsername: attRequest.teacherUsername
             }, { attendanceList: attendanceList });
             return {
               statusCode: 200,

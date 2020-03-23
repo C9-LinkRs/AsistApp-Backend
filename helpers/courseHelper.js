@@ -9,10 +9,6 @@ module.exports.courseExists = async (name, teacherUsername) => {
   });
 };
 
-module.exports.courseExists = async (courseId) => {
-  return await courseModel.exists({ _id: mongoose.Types.ObjectId(courseId) });
-};
-
 module.exports.sameSemester = (course, newCourse) => {
   let courseStart = new Date(course.startDate);
   let courseEnd = new Date(course.endDate);

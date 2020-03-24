@@ -7,6 +7,8 @@ const userHelper = require("../helpers/userHelper");
 const courseHelper = require("../helpers/courseHelper");
 const attendanceHelper = require("../helpers/attendanceHelper");
 
+const mailer = require("../mails/mailer");
+
 let router = express.Router();
 
 router.get("/", async (request, response) => {
@@ -62,8 +64,14 @@ router.post("/check", async (request, response) => {
   }
 });
 
-router.get("/link", async (request, response) => {
+router.post("/generateLink", async (request, response) => {
+  let accessToken;
+  let attRequest = request.body;
+  try {
+    
+  } catch (error) {
 
+  }
 });
 
 async function checkStudent(username, attRequest) {

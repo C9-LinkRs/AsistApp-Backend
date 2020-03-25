@@ -1,9 +1,10 @@
 let express = require("express");
-let qrCode = require("qrcode");
 let jsonWebToken = require("jsonwebtoken");
 
 const userModel = require("../models/user");
 const cacheTokenModel = require("../models/cacheToken");
+
+const userHelper = require("../helpers/userHelper");
 
 let router = express.Router();
 
@@ -29,7 +30,7 @@ router.post("/create", async (request, response) => {
   try {
     if (validRequest(userRequest, true) && !await userExists(userRequest)) {
       let userData = userRequest.username + ';' + userRequest.password + ';' + userRequest.email;
-      let userQrCode = await generateQRCode(userData);
+      let userQrCode = await userHelper.generateQRCode(userData);
       let newUser = new userModel({
         username: userRequest.username,
         password: userRequest.password,
@@ -182,15 +183,6 @@ router.get("/info", async (request, response) => {
     });
   }
 });
-
-async function generateQRCode(data) {
-  try {
-    return await qrCode.toDataURL(data);
-  } catch (error) {
-    console.log("error generating qr code", error);
-    return false;
-  }
-}
 
 function validRequest(body, isCreating) {
   return body && body.username && body.password && ((isCreating) ? body.email : true);

@@ -64,13 +64,31 @@ router.post("/check", async (request, response) => {
   }
 });
 
-router.post("/generateLink", async (request, response) => {
-  let accessToken;
-  let attRequest = request.body;
-  try {
-    
-  } catch (error) {
+router.get("/generateLink", async (request, response) => {
+  
+});
 
+router.get("/generateQr", async (request, response) => {
+  let classToken = request.headers.authorization;
+  try {
+    let decodedToken = jsonWebToken.verify(classToken, process.env.SECRET_KEY);
+
+    let randomNumber = Math.floor(Math.random() * 999999) + 1;
+    let messageToCodify = decodedToken.className + ';' + decodedToken.teacherUsername + ';' + randomNumber;
+    let messageQrCode = await userHelper.generateQRCode(messageToCodify);
+    console.log("hey!");
+    response.json({
+      statusCode: 200,
+      dataUrl: messageQrCode
+    });
+  } catch (error) {
+    console.log(error);
+    let message = error.message || "interal server error"
+    let statusCode = (error.message === "jwt expired") ? 401 : 500;
+    response.json({
+      statusCode,
+      message
+    });
   }
 });
 

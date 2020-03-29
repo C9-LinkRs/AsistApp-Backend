@@ -74,7 +74,7 @@ router.post("/generateLink", async (request, response) => {
       let classToken = jsonWebToken.sign({name: attRequest.name, username: decodedToken.username}, process.env.SECRET_KEY, { expiresIn: process.env.CLASS_TOKEN });
       let toEmail = await userHelper.getUsernameEmail(decodedToken.username);
       let subject = `Enlace para tomar de asistencias de la clase ${attRequest.name}.`;
-      let body = `Enlace: http://144.91.74.212:3000/views/classQrCode.html/?classToken=${classToken}`;
+      let body = `Enlace: http://${process.env.IP}/views/classQrCode.html/?classToken=${classToken}`;
       console.log(toEmail);
       await mailer.sendMail(toEmail, subject, body);
       response.json({

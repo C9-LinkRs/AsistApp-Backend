@@ -6,3 +6,9 @@ node_modules/
 
 #Nginx config
 nginx.conf
+
+#Dev files
+.dockerignore
+docker-compose.yml
+Dockerfile
+nginx.conf

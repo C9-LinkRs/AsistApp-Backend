@@ -64,8 +64,39 @@ router.post("/check", async (request, response) => {
   }
 });
 
-router.get("/generateLink", async (request, response) => {
-  
+router.post("/generateLink", async (request, response) => {
+  let accessToken = request.headers.authorization;
+  let attRequest = request.body;
+  try {
+    let decodedToken = jsonWebToken.verify(accessToken, process.env.SECRET_KEY);
+
+    if (await courseHelper.courseExists(attRequest.name, decodedToken.username)) {
+      let classToken = jsonWebToken.sign({name: attRequest.name, username: decodedToken.username}, process.env.SECRET_KEY, { expiresIn: process.env.CLASS_TOKEN });
+      let toEmail = await userHelper.getUsernameEmail(decodedToken.username);
+      let subject = `Enlace para tomar de asistencias de la clase ${attRequest.name}.`;
+      let body = `Enlace: http://144.91.74.212:3000/views/classQrCode.html/?classToken=${classToken}`;
+      console.log(toEmail);
+      await mailer.sendMail(toEmail, subject, body);
+      response.json({
+        statusCode: 200,
+        message: "class attendance link generated",
+        classToken
+      });
+    } else {
+      response.json({
+        statusCode: 404,
+        message: "course not found"
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    let message = error.message || "interal server error"
+    let statusCode = (error.message === "jwt expired") ? 401 : 500;
+    response.json({
+      statusCode,
+      message
+    });
+  }
 });
 
 router.get("/generateQr", async (request, response) => {
@@ -73,14 +104,20 @@ router.get("/generateQr", async (request, response) => {
   try {
     let decodedToken = jsonWebToken.verify(classToken, process.env.SECRET_KEY);
 
-    let randomNumber = Math.floor(Math.random() * 999999) + 1;
-    let messageToCodify = decodedToken.className + ';' + decodedToken.teacherUsername + ';' + randomNumber;
-    let messageQrCode = await userHelper.generateQRCode(messageToCodify);
-    console.log("hey!");
-    response.json({
-      statusCode: 200,
-      dataUrl: messageQrCode
-    });
+    if (await courseHelper.courseExists(decodedToken.name, decodedToken.username)) {
+      let randomNumber = Math.floor(Math.random() * 999999) + 1;
+      let messageToCodify = decodedToken.name + ';' + decodedToken.username + ';' + randomNumber;
+      let messageQrCode = await userHelper.generateQRCode(messageToCodify);
+      response.json({
+        statusCode: 200,
+        dataUrl: messageQrCode
+      });
+    } else {
+      response.json({
+        statusCode: 404,
+        message: "course not found"
+      });
+    }
   } catch (error) {
     console.log(error);
     let message = error.message || "interal server error"

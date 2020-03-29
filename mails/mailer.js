@@ -24,12 +24,13 @@ module.exports.sendMail = async (to, subject, body) => {
   };
 
   try {
-    await new Promise((resolve, reject) => {
+    let r = await new Promise((resolve, reject) => {
       transporter.sendMail(mailOptions, (error, info) => {
         if (error) return reject(error);
         return resolve(info);
       });
     });
+    console.log(r);
   } catch (error) {
     console.log("error sending email", error);
   }

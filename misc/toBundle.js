@@ -1,8 +1,9 @@
-"use-strict";
+"use strict";
 
 let qrCode = require("qrcode");
+let domready = require("domready");
 
-document.addEventListener("load", () => {
+domready(() => {
 
   let urlParams = new URLSearchParams(location.search);
 
@@ -15,7 +16,8 @@ document.addEventListener("load", () => {
         headers: { "Authorization": classToken }
       }).then(response => {
         let responseJson = response.json();
-        if (responseJson.statusCode == 200 && responseJson.dataUrl) {
+        console.log(responseJson);
+        if (responseJson.statusCode === 200 && responseJson.dataUrl) {
           paintDataUrl(responseJson.dataUrl);
           setTimeout(caller, 15000);
         } else {

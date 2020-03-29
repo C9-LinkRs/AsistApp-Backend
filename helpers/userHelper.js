@@ -24,3 +24,7 @@ module.exports.generateQRCode = async data => {
     return false;
   }
 };
+
+module.exports.getUsernameEmail = async username => {
+  return (await userModel.find({ username }, [ "email" ]))[0].email;
+};

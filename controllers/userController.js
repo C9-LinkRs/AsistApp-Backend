@@ -29,7 +29,7 @@ router.post("/create", async (request, response) => {
   let userRequest = request.body;
   try {
     if (validRequest(userRequest, true) && !await userExists(userRequest)) {
-      let userData = userRequest.username + ';' + userRequest.password + ';' + userRequest.email;
+      let userData = userRequest.username + ';' + userRequest.email;
       let userQrCode = await userHelper.generateQRCode(userData);
       let newUser = new userModel({
         username: userRequest.username,

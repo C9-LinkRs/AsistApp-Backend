@@ -12,7 +12,7 @@ const OPTIONS = {
   useUnifiedTopology: true,
   connectTimeoutMS: 10000
 };
-const URL = `mongodb://${MONGODB_USERNAME}:${MONGODB_PASSWORD}@${MONGODB_SERVER}/${MONGODB_DATABASE}?authSource=admin`;
+const URL = "mongodb://localhost/asistencias-un-prod";
 
 mongoose.connect(URL, OPTIONS).then(() => {
   console.log("MongoDB connection successful");

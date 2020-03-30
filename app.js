@@ -11,7 +11,7 @@ mongodb.connection.once('open', () => {
   app.use(bodyParser.urlencoded({extended: false}));
   app.use("/", routes);
   
-  app.listen(process.env.NODEJS_PORT, () => {
+  app.listen(process.env.PORT || process.env.NODEJS_PORT, () => {
     console.log(`Server is up and listeting on port ${process.env.NODEJS_PORT}`);
   });
 });

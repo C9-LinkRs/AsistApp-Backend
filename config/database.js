@@ -14,7 +14,7 @@ const OPTIONS = {
 };
 const URL = "mongodb://localhost/asistencias-un-prod";
 
-mongoose.connect(URL, OPTIONS).then(() => {
+mongoose.connect(process.env.MONGODB_URI || URL, OPTIONS).then(() => {
   console.log("MongoDB connection successful");
 }).catch(error => {
   console.log("MongoDB connection error", error);

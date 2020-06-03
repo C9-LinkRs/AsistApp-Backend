@@ -276,7 +276,8 @@ async function getStudentCourses(username) {
       "name",
       "teacherUsername",
       "startDate",
-      "endDate"
+      "endDate",
+      "schedule"
     ]);
 }
 
